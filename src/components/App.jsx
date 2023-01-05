@@ -1,47 +1,73 @@
 import { Heading } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
-import { Input, Box } from '@chakra-ui/react';
+import { Input, Box, Spinner } from '@chakra-ui/react';
 import { ToastContainer, toast } from 'react-toastify';
 import Wrapper from './Container';
 import DataTable from './DataList';
-import { getData } from './services/api';
+import { getData, getById } from './services/api';
 import Pagination from './Pagination';
+import { reducer } from './reducers/reducers';
+import { useReducer } from 'react';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const App = () => {
   const pageTotalCount = useRef(null);
+  const firstMount = useRef(true);
 
-  const [data, setData] = useState([]);
-  const [page] = useState(1);
+  const initialState = { data: [], page: 1, error: null, isLoading: false };
 
   const [filter, setFilter] = useState('');
-  const [error, setError] = useState(null);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     async function getDataList() {
+      dispatch({ type: 'changeIsLoading', payload: true });
       try {
-        const data = await getData(page);
-        console.log(data);
-        setData(prevState => [...prevState, ...data.data]);
+        const data = await getData(state.page);
+        dispatch({ type: 'addData', payload: data.data });
         pageTotalCount.current = data.total_pages;
       } catch (error) {
         toast.error(
           `Something went wrong, try to reload the page, ${error.message}`
         );
         console.error(error);
-        setError(error);
+        dispatch({ type: 'setError', payload: error });
+      } finally {
+        dispatch({ type: 'changeIsLoading', payload: false });
       }
     }
-    getDataList();
-  }, [page]);
+    async function getDataById() {
+      dispatch({ type: 'changeIsLoading', payload: true });
+      try {
+        const data = await getById(filter);
+        dispatch({ type: 'addData', payload: [data.data] });
+      } catch (error) {
+        toast.error(
+          `Something went wrong, try to reload the page, ${error.message}`
+        );
+        console.error(error);
+        dispatch({ type: 'setError', payload: error });
+      } finally {
+        dispatch({ type: 'changeIsLoading', payload: false });
+      }
+    }
+    if (firstMount.current === false) {
+      if (filter === '') {
+        getDataList();
+      } else {
+        getDataById();
+      }
+    }
 
-  // useEffect(() => {
-  //   console.log('2');
-  // }, [filter]);
+    return () => {
+      firstMount.current = false;
+    };
+  }, [state.page, filter]);
 
   return (
     <>
       <Wrapper>
-        {error ? (
+        {state.error ? (
           <Heading as="h1" size="3xl" textAlign="center">
             Something went wrong, try to reload the page
           </Heading>
@@ -57,11 +83,26 @@ export const App = () => {
               value={filter}
               onChange={evt => setFilter(evt.target.value)}
             />
-            <DataTable data={data} />
-            <Pagination
-              pageTotalCount={pageTotalCount.current}
-              currentPage={page}
-            />
+            {!state.isLoading ? (
+              <>
+                <DataTable data={state.data} />
+                <Pagination
+                  pageTotalCount={pageTotalCount.current}
+                  currentPage={state.page}
+                  changePageDispatch={dispatch}
+                />
+              </>
+            ) : (
+              <Box>
+                <Spinner
+                  thickness="4px"
+                  speed="0.65s"
+                  emptyColor="gray.200"
+                  color="blue.500"
+                  size="xl"
+                />
+              </Box>
+            )}
           </Box>
         )}
       </Wrapper>
