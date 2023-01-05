@@ -12,7 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export const App = () => {
   const pageTotalCount = useRef(null);
-  const firstMount = useRef(true);
+  // const firstMount = useRef(true);
 
   const initialState = { data: [], page: 1, error: null, isLoading: false };
 
@@ -51,16 +51,17 @@ export const App = () => {
         dispatch({ type: 'changeIsLoading', payload: false });
       }
     }
-    if (firstMount.current === false) {
-      if (filter === '') {
-        getDataList();
-      } else {
-        getDataById();
-      }
+    // if (firstMount.current === false) {
+    if (filter === '') {
+      getDataList();
+    } else {
+      getDataById();
     }
+    // }
 
     return () => {
-      firstMount.current = false;
+      // firstMount.current = false;
+      dispatch({ type: 'addData', payload: [] });
     };
   }, [state.page, filter]);
 
